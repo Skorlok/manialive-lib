@@ -14,29 +14,23 @@ namespace ManiaLive\PluginHandler;
 use ManiaLive\Event\Dispatcher;
 use ManiaLive\Application\Listener as AppListener;
 use ManiaLive\Application\Event as AppEvent;
-use ManiaLive\Data\Listener as PlayerListener;
-use ManiaLive\Data\Event as PlayerEvent;
 use ManiaLive\DedicatedApi\Callback\Adapter as ServerAdapter;
 use ManiaLive\DedicatedApi\Callback\Event as ServerEvent;
 use ManiaLive\Features\Tick\Listener as TickListener;
 use ManiaLive\Features\Tick\Event as TickEvent;
 use ManiaLive\PluginHandler\Listener as PluginListener;
 use ManiaLive\PluginHandler\Event as PluginEvent;
-
-use ManiaLive\Data\Storage;
 use ManiaLive\Database\Connection as DbConnection;
 use Maniaplanet\DedicatedServer\Connection;
 use ManiaLive\Features\ChatCommand\Interpreter;
 use ManiaLive\Features\ChatCommand\Command;
-use ManiaLive\Utilities\Console;
-use ManiaLive\Utilities\Logger;
 
 /**
  * Extend this class to create a Plugin that can be used with the PluginHandler.
  * This will also provide function shortcuts for registering chat commands,
  * dependency handling and the possibility of Plugin communication.
  */
-abstract class Plugin extends ServerAdapter implements TickListener, AppListener, PlayerListener, PluginListener
+abstract class Plugin extends ServerAdapter implements TickListener, AppListener, PluginListener
 {
 	/** @var string */
 	private $id;
@@ -48,9 +42,7 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 	 * Event subscriber swichtes
 	 */
 	private $eventsApplication = 0;
-	private $eventsTick = false;
 	private $eventsServer = 0;
-	private $eventsStorage = 0;
 	private $eventsPlugins = 0;
 	/** @var \ManiaLive\PluginHandler\PluginHandler */
 	private $pluginHandler;
@@ -58,8 +50,6 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 	private $methods;
 	/** @var \ManiaLive\Features\ChatCommand\Command[] */
 	private $chatCommands;
-	/** @var \ManiaLive\Data\Storage */
-	protected $storage;
 	/** @var Connection */
 	protected $connection;
 	/** @var DbConnection */
@@ -73,10 +63,10 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 		$this->id = "\\".get_class($this);
 		$this->setVersion(1);
 
+		/** @var \ManiaLive\DedicatedApi\Config $config */
 		$config = \ManiaLive\DedicatedApi\Config::getInstance();
 		$this->connection = Connection::factory($config->host, $config->port, $config->timeout, $config->user, $config->password);
 		$this->pluginHandler = PluginHandler::getInstance();
-		$this->storage = Storage::getInstance();
 		$this->chatCommands = array();
 	}
 
@@ -179,44 +169,11 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 	}
 
 	/**
-	 * Returns a list of the commands that are exposed by this plugin.
-	 * @return array An array with the keys: name, parameter_count, parameters
-	 */
-	final public function getPublicMethods()
-	{
-		$methods = array();
-		foreach($this->methods as $name => $method)
-		{
-			$info = array(
-				'name' => $name,
-				'parameter_count' => $method->getNumberOfParameters(),
-				'parameters' => array()
-			);
-
-			$parameters = $method->getParameters();
-			foreach($parameters as $parameter)
-			{
-				if($parameter->allowsNull())
-				{
-					$info['parameters'][] = '['.$parameter->name.']';
-				}
-				else
-				{
-					$info['parameters'][] = $parameter->name;
-				}
-			}
-
-			$methods[] = $info;
-		}
-		return $methods;
-	}
-
-	/**
 	 * This method can be used to restrict a call to a specific method
 	 * until the plugin has been loaded successfully!
 	 * @throws \Exception
 	 */
-	final private function restrictIfUnloaded()
+	private function restrictIfUnloaded()
 	{
 		if(!$this->isLoaded())
 		{
@@ -247,6 +204,7 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 	// Helpers
 	final protected function enableDatabase()
 	{
+		/** @var \ManiaLive\Database\Config $config */
 		$config = \ManiaLive\Database\Config::getInstance();
 		$this->db = DbConnection::getConnection(
 				$config->host,
@@ -256,11 +214,6 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 				$config->type,
 				$config->port
 		);
-	}
-
-	final protected function disableDatabase()
-	{
-		$this->db = null;
 	}
 
 	/**
@@ -294,7 +247,6 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 		$this->restrictIfUnloaded();
 
 		Dispatcher::register(TickEvent::getClass(), $this);
-		$this->eventsTick = true;
 	}
 
 	/**
@@ -305,7 +257,6 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 		$this->restrictIfUnloaded();
 
 		Dispatcher::unregister(TickEvent::getClass(), $this);
-		$this->eventsTick = false;
 	}
 
 	/**
@@ -331,29 +282,6 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 
 		Dispatcher::unregister(ServerEvent::getClass(), $this, $events & $this->eventsServer);
 		$this->eventsServer &= ~$events;
-	}
-
-	/**
-	 * Start listening for Storage events:
-	 * onPlayerNewBestTime, onPlayerNewRank, onPlayerNewBestScore.
-	 */
-	final protected function enableStorageEvents($events = PlayerEvent::ALL)
-	{
-		$this->restrictIfUnloaded();
-
-		Dispatcher::register(PlayerEvent::getClass(), $this, $events & ~$this->eventsStorage);
-		$this->eventsStorage |= $events;
-	}
-
-	/**
-	 * Stop listening for Storage Events.
-	 */
-	final protected function disableStorageEvents($events = PlayerEvent::ALL)
-	{
-		$this->restrictIfUnloaded();
-
-		Dispatcher::unregister(PlayerEvent::getClass(), $this, $events & $this->eventsStorage);
-		$this->eventsStorage &= ~$events;
 	}
 
 	/**
@@ -411,27 +339,19 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 			Interpreter::getInstance()->unregister($command);
 	}
 
-	/**
-	 * Write message into the plugin's logfile.
-	 * Prefix with Plugin's name.
-	 * @param string $text
-	 * @deprecated since version 2.7
-	 */
-	final protected function writeLog($text)
-	{
-		Logger::debug($text, true, array($this->id));
-	}
+        final public function unregisterChatCommand($name){
+            $toRemove = -1;
+            foreach($this->chatCommands as $key => $command){
+                if($command->name == $name){
+                    Interpreter::getInstance()->unregister($command);
+                    $toRemove = $key;
+                }
+            }
 
-	/**
-	 * Write message onto the commandline.
-	 * Prefix with Plugin's name and
-	 * @param string $text
-	 * @deprecated since version 2.7
-	 */
-	final protected function writeConsole($text)
-	{
-		Console::println('['.Console::getDatestamp().'|'.$this->id.'] '.$text);
-	}
+            if($toRemove != -1){
+                unset($this->chatCommands[$toRemove]);
+            }
+        }
 
 	// LISTENERS
 	// plugin events
@@ -452,7 +372,6 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 	{
 		$this->disableApplicationEvents();
 		$this->disableDedicatedEvents();
-		$this->disableStorageEvents();
 		$this->disableTickerEvent();
 		$this->disablePluginEvents();
 
@@ -469,15 +388,6 @@ abstract class Plugin extends ServerAdapter implements TickListener, AppListener
 
 	// ticker event
 	function onTick() {}
-
-	// storage events
-	function onPlayerNewBestScore($player, $oldScore, $newScore) {}
-	function onPlayerNewBestTime($player, $oldBest, $newBest) {}
-	function onPlayerNewRank($player, $oldRank, $newRank) {}
-	function onPlayerChangeSide($player, $oldSide) {}
-	function onPlayerFinishLap($player, $time, $checkpoints, $nbLap) {}
-	function onPlayerChangeTeam($login, $formerTeamId, $newTeamId) {}
-	function onPlayerJoinGame($login) {}
 
 	// plugin events
 	function onPluginLoaded($pluginId) {}

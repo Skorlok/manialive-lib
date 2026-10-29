@@ -39,8 +39,6 @@ class Event extends \ManiaLive\Event\Event
 	const ON_MODE_SCRIPT_CALLBACK           = 0x800000;
 	const ON_MODE_SCRIPT_CALLBACK_ARRAY     = 0x800000;
 	const ON_PLAYER_ALLIES_CHANGED          = 0x1000000;
-	const ON_LOAD_DATA                      = 0x2000000;
-	const ON_SAVE_DATA                      = 0x4000000;
 
 	static private $rc;
 	protected $params;
@@ -99,8 +97,6 @@ class Event extends \ManiaLive\Event\Event
 			case self::ON_VOTE_UPDATED: $listener->onVoteUpdated($p[0], $p[1], $p[2], $p[3]); break;
 			case self::ON_MODE_SCRIPT_CALLBACK: $listener->onModeScriptCallback($p[0], $p[1]); break;
 			case self::ON_PLAYER_ALLIES_CHANGED: $listener->onPlayerAlliesChanged($p[0]);break;
-			case self::ON_LOAD_DATA: $listener->onLoadData($p[0], $p[1]);break;
-			case self::ON_SAVE_DATA: $listener->onSaveData($p[0], $p[1]);break;
 		}
 	}
 

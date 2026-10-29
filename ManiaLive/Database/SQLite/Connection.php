@@ -15,7 +15,6 @@ use ManiaLive\Database\NotSupportedException;
 use ManiaLive\Database\QueryException;
 use ManiaLive\Database\DisconnectionException;
 use ManiaLive\Database\NotConnectedException;
-use ManiaLive\Database\Exception;
 use ManiaLive\Database\ConnectionException;
 
 /**
@@ -34,14 +33,11 @@ class Connection extends \ManiaLive\Database\Connection
 			mkdir($datapath);
 
 		$this->filename = $datapath.'/'.$host.'.db';
-		try
-		{
+		try {
 			$this->connection = new \SQLite3($this->filename);
-		}
-		catch(\Exception $e)
-		{
-			$this->connection = null;
-			throw new ConnectionException($e->getMessage());
+		} catch(\Exception $e) {
+			die('[SQLite] Connect Error (' . $e->getMessage() . ')');
+			throw new ConnectionException();
 		}
 	}
 
@@ -111,7 +107,7 @@ class Connection extends \ManiaLive\Database\Connection
 
 	function quote($string)
 	{
-		return '\''.\SQLite3::escapeString($string).'\'';
+		return '\''.\SQLite3::escapeString(is_null($string) ? "" : $string).'\'';
 	}
 
 	function select($database)

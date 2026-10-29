@@ -1,27 +1,42 @@
 {
-    "name": "maniaplanet/manialive-lib",
+    "name": "skorlok/manialive-lib",
     "type": "library",
     "description": "ManiaLive library",
     "keywords": ["maniaplanet", "shootmania", "trackmania", "application", "xml-rpc", "socket"],
-    "homepage": "https://github.com/maniaplanet/manialive-lib",
+    "homepage": "https://github.com/skorlok/manialive-lib",
     "license": "LGPL-3.0",
     "authors": [
         {
             "name": "NadeoLive",
             "email": "livedev@nadeo.com",
             "homepage": "http://www.nadeo.com/"
+        },
+        {
+            "name": "Skorlok",
+            "email": "contact@skorlok.com",
+            "homepage": "https://skorlok.com"
         }
     ],
     "support": {
         "forum": "http://forum.maniaplanet.com/viewforum.php?f=463"
     },
     "require": {
-        "php": ">=5.3",
+        "php": ">=5.4",
         "ext-curl": "*",
         "ext-json": "*",
-        "maniaplanet/maniaplanet-ws-sdk": "dev-master",
-        "maniaplanet/manialib": "dev-master",
-        "maniaplanet/dedicated-server-api": "dev-master"
+        "ext-mbstring": "*",
+        "ext-simplexml": "*",
+        "ext-xml": "*",
+        "skorlok/dedicated-server-api": "^1.0"
+    },
+    "suggest": {
+        "ext-mysqli": "One of ext-mysqli or ext-sqlite3 is required",
+        "ext-sqlite3": "One of ext-mysqli or ext-sqlite3 is required",
+        "ext-pcntl": "Clean shutdown on SIGTERM and SIGINT (Linux)",
+        "ext-com_dotnet": "Required on Windows"
+    },
+    "conflict": {
+        "maniaplanet/manialive-lib": "*"
     },
     "autoload": {
         "psr-4": {

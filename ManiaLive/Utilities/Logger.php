@@ -11,15 +11,11 @@
 
 namespace ManiaLive\Utilities;
 
-use ManiaLib\Utils\Path;
-
 class Logger
 {
 	private static $logs = array();
-	private $enabled;
 	private $path;
 	private static $staticPath;
-	private $prefix;
 	private static $staticPrefix;
 	protected static $loaded = false;
 
@@ -40,32 +36,18 @@ class Logger
 	private function __construct($name)
 	{
 		// if path does not exist ...
-		$config = \ManiaLive\Config\Config::getInstance();
-		$path = \ManiaLib\Utils\Path::getInstance();
-		if(!is_dir($path->getLog(true)))
-			mkdir($path->getLog(true), '0777', true);
-		
-		$this->path = $path->getLog(true).'/'.($config->logsPrefix ? $config->logsPrefix.'-' : '').$name.'.txt';
-		$this->enabled = true;
-	}
+		$logPath = APP_ROOT.DIRECTORY_SEPARATOR.'logs'.DIRECTORY_SEPARATOR;
 
-	function enableLog()
-	{
-		$this->enabled = true;
-	}
+		if(!is_dir($logPath))
+			mkdir($logPath, '0777', true);
 
-	function disableLog()
-	{
-		$this->enabled = false;
+		$this->path = $logPath . 'manialive' . $name . '.txt';
 	}
 
 	function write($text, $tags=array())
 	{
-		if($this->enabled)
-		{
-			array_unshift($tags, date('Y.m.d H:i:s'));
-			file_put_contents($this->path, '['.implode('][', $tags).'] '.$text.PHP_EOL, FILE_APPEND);
-		}
+		array_unshift($tags, date('Y.m.d H:i:s'));
+		file_put_contents($this->path, '['.implode('][', $tags).'] '.$text.PHP_EOL, FILE_APPEND);
 	}
 
 	static function info($message, $addDate = true, $tags=array())
@@ -88,10 +70,7 @@ class Logger
 
 	static function debug($message, $addDate = true, $tags=array())
 	{
-		if(\ManiaLive\Config\Config::getInstance()->debug)
-		{
-			self::log($message, $addDate, 'debug.log', $tags);
-		}
+		self::log($message, $addDate, 'debug.log', $tags);
 	}
 
 	static function log($message, $addDate = true, $logFilename = 'debug.log', $tags=array(), $nl="\n")
@@ -113,14 +92,14 @@ class Logger
 		if(!self::$loaded)
 		{
 			$config = \ManiaLive\Config\Config::getInstance();
-			$path = Path::getInstance()->getLog(true).DIRECTORY_SEPARATOR;
+			$path = APP_ROOT.DIRECTORY_SEPARATOR.'logs'.DIRECTORY_SEPARATOR;
 			if(!is_dir($path) && !mkdir($path, '0777', true))
 			{
-				throw new \ManiaLive\Application\FatalException(sprintf("The log repository (%s) does not exists and can't be created", Path::getInstance()->getLog(true)));
+				throw new \ManiaLive\Application\FatalException(sprintf("The log repository (%s) does not exists and can't be created", APP_ROOT.DIRECTORY_SEPARATOR.'logs'.DIRECTORY_SEPARATOR));
 			}
 			self::$loaded = true;
 			self::$staticPath = $path;
-			self::$staticPrefix = $config->logsPrefix ? $config->logsPrefix.'-' : '';
+			self::$staticPrefix = 'manialive-';
 		}
 		return!empty(self::$staticPath);
 	}

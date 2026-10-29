@@ -9,14 +9,11 @@
  * @date        $Date$:
  */
 
-namespace ManiaLive\Database\MySQL;
+namespace ManiaLive\Database\MySQLI;
 
 use ManiaLive\Database\SelectionException;
-use ManiaLive\Database\NotSupportedException;
 use ManiaLive\Database\QueryException;
 use ManiaLive\Database\DisconnectionException;
-use ManiaLive\Database\NotConnectedException;
-use ManiaLive\Database\Exception;
 use ManiaLive\Database\ConnectionException;
 use ManiaLive\Event\Dispatcher;
 use ManiaLive\Features\Tick\Event as TickEvent;
@@ -29,15 +26,16 @@ class Connection extends \ManiaLive\Database\Connection implements TickListener
 	protected $user;
 	protected $password;
 	protected $database;
-
+	protected $port;
 	protected $tick = 0;
 
 	function __construct($host, $username, $password, $database, $port)
 	{
 		// Init
-		$this->host = $host.($port ? ':'.$port : '');
+		$this->host = $host;
 		$this->user = $username;
 		$this->password = $password;
+		$this->port = $port;
 		$this->connect($database);
 	}
 
@@ -53,53 +51,36 @@ class Connection extends \ManiaLive\Database\Connection implements TickListener
 	protected function connect($database)
 	{
 		// Connection
-		try
-		{
-			$this->connection = mysql_connect(
-					$this->host,
-					$this->user,
-					$this->password
-			);
-		}
-		catch(\ErrorException $err)
-		{
+		try {
+			$this->connection = mysqli_connect($this->host, $this->user, $this->password, $database, $this->port);
+		} catch(\ErrorException $err) {
 			throw new ConnectionException($err->getMessage(), $err->getCode());
 		}
 
 		// Success ?
-		if(!$this->connection)
-		{
-			throw new ConnectionException;
+		if (mysqli_connect_error()) {
+			die('[MySQL] Connect Error (' . mysqli_connect_errno() . ') ' . mysqli_connect_error());
 		}
 
 		$this->select($database);
-
-		// Default Charset : UTF8
-		$this->setCharset('utf8');
+	
+		// Default Charset : UTF8-MB4
+		$this->setCharset('utf8mb4');
 		Dispatcher::register(TickEvent::getClass(), $this);
-	}
-
-	/**
-	 * @see ManiaLive\Database.Connection::getHandle()
-	 * @return resource
-	 */
-	function getHandle()
-	{
-		return $this->connection;
 	}
 
 	function setCharset($charset)
 	{
-		if(function_exists('mysql_set_charset'))
+		if(function_exists('mysqli_set_charset'))
 		{
 			if(!$this->isConnected())
 			{
 				$this->connect($this->database);
 			}
 
-			if(!mysql_set_charset($charset, $this->connection))
+			if(!mysqli_set_charset($this->connection, $charset))
 			{
-				throw new Exception;
+				throw new \Exception;
 			}
 		}
 		else
@@ -112,9 +93,9 @@ class Connection extends \ManiaLive\Database\Connection implements TickListener
 	function select($database)
 	{
 		$this->database = $database;
-		if(!mysql_select_db($this->database, $this->connection))
+		if(!mysqli_select_db($this->connection, $this->database))
 		{
-			throw new SelectionException(mysql_error($this->connection), mysql_errno($this->connection));
+			throw new SelectionException(mysqli_error($this->connection), mysqli_errno($this->connection));
 		}
 	}
 
@@ -124,7 +105,7 @@ class Connection extends \ManiaLive\Database\Connection implements TickListener
 		{
 			$this->connect($this->database);
 		}
-		return '\''.mysql_real_escape_string($string, $this->connection).'\'';
+		return '\''.mysqli_real_escape_string($this->connection, is_null($string) ? "" : $string).'\'';
 	}
 
 	function execute($query)
@@ -139,32 +120,14 @@ class Connection extends \ManiaLive\Database\Connection implements TickListener
 		{
 			$query = call_user_func_array('sprintf', func_get_args());
 		}
-		$result = mysql_query($query, $this->connection);
+		$result = mysqli_query($this->connection, $query);
 		Connection::endMeasuring($this);
 
 		if(!$result)
 		{
-			throw new QueryException(mysql_error($this->connection), mysql_errno($this->connection));
+			throw new QueryException(mysqli_error($this->connection), mysqli_errno($this->connection));
 		}
 		return new RecordSet($result);
-	}
-
-	function affectedRows()
-	{
-		if(!$this->isConnected())
-		{
-			$this->connect($this->database);
-		}
-		return mysql_affected_rows($this->connection);
-	}
-
-	function insertID()
-	{
-		if(!$this->isConnected())
-		{
-			$this->connect($this->database);
-		}
-		return mysql_insert_id($this->connection);
 	}
 
 	function isConnected()
@@ -174,17 +137,12 @@ class Connection extends \ManiaLive\Database\Connection implements TickListener
 
 	function disconnect()
 	{
-		if(!mysql_close($this->connection))
+		if(!mysqli_close($this->connection))
 		{
-			throw new DisconnectionException;
+			throw new DisconnectionException("Disconnecting MySQL failed for unknown reason.");
 		}
 		$this->connection = null;
 		Dispatcher::unregister(TickEvent::getClass(), $this);
-	}
-
-	function getDatabase()
-	{
-		return $this->database;
 	}
 
 	function tableExists($tableName)

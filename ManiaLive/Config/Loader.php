@@ -1,32 +1,60 @@
 <?php
-/**
- * ManiaLive - TrackMania dedicated server manager in PHP
- *
- * @copyright   Copyright (c) 2009-2011 NADEO (http://www.nadeo.com)
- * @license     http://www.gnu.org/licenses/lgpl.html LGPL License 3
- * @version     $Revision$:
- * @author      $Author$:
- * @date        $Date$:
- */
 
 namespace ManiaLive\Config;
 
-class Loader extends \ManiaLib\Application\ConfigLoader
+class Loader extends \ManiaLive\Utilities\Singleton
 {
-	function run()
+	private $aliases = array(
+		'config' => 'ManiaLive\\Config\\Config',
+		'database' => 'ManiaLive\\Database\\Config',
+		'manialive' => 'ManiaLive\\Application\\Config',
+		'server' => 'ManiaLive\\DedicatedApi\\Config'
+	);
+
+	public function load($filename)
 	{
-		$manialiveAliases = array(
-			'config' => 'ManiaLive\\Config\\Config',
-			'database' => 'ManiaLive\\Database\\Config',
-			'wsapi' => 'ManiaLib\\WebServices\\Config',
-			'manialive' => 'ManiaLive\\Application\\Config',
-			'server' => 'ManiaLive\\DedicatedApi\\Config',
-			'threading' => 'ManiaLive\\Threading\\Config'
-		);
-		
-		$this->aliases = array_merge($this->aliases, $manialiveAliases);
-		
-		parent::run();
+		$values = parse_ini_file($filename, true);
+		$values = $this->replaceAliases($values);
+		$this->arrayToSingletons($values);
+	}
+
+	private function replaceAliases(array $values)
+	{
+		$newValues = array();
+		foreach ($values as $key => $value) {
+			$callback = explode('.', $key, 2);
+			if (count($callback) == 2) {
+				$className = reset($callback);
+				$propertyName = end($callback);
+				if (isset($this->aliases[$className])) {
+					$className = $this->aliases[$className];
+				}
+				$newValues[$className . '.' . $propertyName] = $value;
+			} else {
+				$newValues[$key] = $value;
+			}
+		}
+		return $newValues;
+	}
+
+	private function arrayToSingletons($values)
+	{
+		foreach ($values as $key => $value) {
+			$callback = explode('.', $key, 2);
+			if (count($callback) != 2) {
+				continue;
+			}
+			$className = reset($callback);
+			$propertyName = end($callback);
+			if (class_exists($className)) {
+				if (is_subclass_of($className, '\\ManiaLive\\Utilities\\Singleton')) {
+					if (property_exists($className, $propertyName)) {
+						$instance = call_user_func(array($className, 'getInstance'));
+						$instance->$propertyName = $value;
+					}
+				}
+			}
+		}
 	}
 }
 

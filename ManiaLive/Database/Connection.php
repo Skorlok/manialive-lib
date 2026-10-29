@@ -18,7 +18,6 @@ abstract class Connection
 	private static $queryStartTime = array();
 	private static $queriesCount = array();
 	private static $queriesTotalTimes = array();
-	private static $queriesAverageTimes = array();
 	public $id;
 
 	/**
@@ -68,7 +67,6 @@ abstract class Connection
 		self::$connections[$id] = $connection;
 		self::$queriesCount[$id] = 0;
 		self::$queriesTotalTimes[$id] = 0;
-		self::$queriesAverageTimes[$id] = 0;
 
 		return $connection;
 	}
@@ -112,18 +110,6 @@ abstract class Connection
 	abstract function execute($query);
 
 	/**
-	 * Return the number of rows affected by the previous query
-	 * @return int
-	 */
-	abstract function affectedRows();
-
-	/**
-	 * Return the id of the last insert query
-	 * @return int
-	 */
-	abstract function insertID();
-
-	/**
 	 * Return true if the connection to the database is open, false in the other cases
 	 * @return bool
 	 */
@@ -135,23 +121,11 @@ abstract class Connection
 	abstract function disconnect();
 
 	/**
-	 * Get the selected database
-	 * @return string 
-	 */
-	abstract function getDatabase();
-
-	/**
 	 * Check if the given table exists
 	 * @param string $table
 	 * @return bool
 	 */
 	abstract function tableExists($table);
-
-	/**
-	 * Return the current Connection Link
-	 * @return resource
-	 */
-	abstract function getHandle();
 
 	static function startMeasuring(Connection $connection)
 	{
@@ -162,12 +136,6 @@ abstract class Connection
 	{
 		++self::$queriesCount[$connection->id];
 		self::$queriesTotalTimes[$connection->id] += microtime(true) - self::$queryStartTime[$connection->id];
-		self::$queriesAverageTimes[$connection->id] = self::$queriesTotalTimes[$connection->id] / self::$queriesCount[$connection->id];
-	}
-
-	static function getMeasuredAverageTimes()
-	{
-		return self::$queriesAverageTimes;
 	}
 }
 

@@ -11,22 +11,10 @@
 
 namespace ManiaLive\Config;
 
-class Config extends \ManiaLib\Utils\Singleton
+class Config extends \ManiaLive\Utilities\Singleton
 {
-	// base path for logging
-	public $logsPath;
-	public $logsPrefix = 'manialive';
-	// enable runtime logging?
 	public $runtimeLog = false;
-	// log all errors from all instances?
-	public $globalErrorLog = false;
-	public $maxErrorCount = false;
-	public $dedicatedPath = APP_ROOT;
-	//Set to true to disable the updater
-	public $lanMode = false;
-	public $debug = false;
-	public $verbose = true;
-	public $enableToggleGUI = true;
+	public $maxErrorCount = 15;
 }
 
 ?>

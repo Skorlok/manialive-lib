@@ -17,7 +17,7 @@ use ManiaLive\DedicatedApi\Callback\Event as ServerEvent;
 use Maniaplanet\DedicatedServer\Connection;
 use ManiaLive\Utilities\Logger;
 
-final class Interpreter extends \ManiaLib\Utils\Singleton implements ServerListener
+final class Interpreter extends \ManiaLive\Utilities\Singleton implements ServerListener
 {
 	const NOT_REGISTERED_AT_ALL     = 0;
 	const REGISTERED_DIFFERENTLY    = 1;
@@ -155,26 +155,33 @@ final class Interpreter extends \ManiaLib\Utils\Singleton implements ServerListe
 
 	function onPlayerChat($playerUid, $login, $text, $isRegistredCmd)
 	{
-		if(!$isRegistredCmd)
+		if (!$isRegistredCmd)
 			return;
 
 		$cmdAndArgs = explode(' ', $text, 2);
 		$command = substr($cmdAndArgs[0], 1);
 		$parameters = count($cmdAndArgs) > 1 ? $cmdAndArgs[1] : '';
 
-		if($command === 'version')
+		if ($command === 'version')
 			return;
 
-		$isRegistered = $this->isRegistered($command);
-		if($isRegistered == self::REGISTERED_AS_POLYMORPHIC)
+		if (isset($text[1]) && $text[1] == '/') {
+			$command = '/';
+			$parameters = substr($text, 2);
 			$this->callCommand($login, $text, $command, $parameters ? array($parameters) : array(), true);
-		else if($isRegistered == self::NOT_REGISTERED_AT_ALL)
+			return;
+		}
+
+		$isRegistered = $this->isRegistered($command);
+		if ($isRegistered == self::REGISTERED_AS_POLYMORPHIC)
+			$this->callCommand($login, $text, $command, $parameters ? array($parameters) : array(), true);
+		else if ($isRegistered == self::NOT_REGISTERED_AT_ALL)
 			$this->connection->chatSendServerMessage(
 					'Command $<$o$FC4'.$command.'$> does not exist, try /help to see a list of the available commands.',
 					$login, true);
 		else
 		{
-			if(strlen($parameters))
+			if (strlen($parameters))
 			{
 				$matches = array();
 				preg_match_all('/(?!\\\\)"((?:\\\\"|[^"])+)"?|([^\s]+)/', $parameters, $matches);
@@ -186,7 +193,7 @@ final class Interpreter extends \ManiaLib\Utils\Singleton implements ServerListe
 				$parameters = array();
 
 			$isRegistered = $this->isRegistered($command, count($parameters));
-			if($isRegistered == self::REGISTERED_EXACTLY)
+			if ($isRegistered == self::REGISTERED_EXACTLY)
 				$this->callCommand($login, $text, $command, $parameters);
 			else
 			{
@@ -314,8 +321,6 @@ final class Interpreter extends \ManiaLib\Utils\Singleton implements ServerListe
 	function onVoteUpdated($stateName, $login, $cmdName, $cmdParam) {}
 	function onModeScriptCallback($param1, $param2) {}
 	function onPlayerAlliesChanged($login) {}
-	function onLoadData($type, $id) {}
-	function onSaveData($type, $id) {}
 }
 
 class CommandAlreadyRegisteredException extends \Exception {}

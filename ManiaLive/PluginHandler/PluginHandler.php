@@ -15,17 +15,15 @@ use ManiaLive\Event\Dispatcher;
 use ManiaLive\Application\Listener as AppListener;
 use ManiaLive\Application\Event as AppEvent;
 use ManiaLive\Application\ErrorHandling;
-use ManiaLive\Data\Storage;
 use ManiaLive\DedicatedApi\Callback\Listener as ServerListener;
 use ManiaLive\DedicatedApi\Callback\Event as ServerEvent;
-use Maniaplanet\DedicatedServer\Structures\Status;
 use ManiaLive\Utilities\Console;
 
 /**
  * Load the plugins.
  * Manages dependencies and provides an interface to Plugins to communicate between each other.
  */
-final class PluginHandler extends \ManiaLib\Utils\Singleton implements AppListener, ServerListener
+final class PluginHandler extends \ManiaLive\Utilities\Singleton implements AppListener, ServerListener
 {
 	private $loadedPlugins = array();
 	private $delayedPlugins = array();
@@ -36,8 +34,9 @@ final class PluginHandler extends \ManiaLib\Utils\Singleton implements AppListen
 		Dispatcher::register(ServerEvent::getClass(), $this, ServerEvent::ON_SERVER_START | ServerEvent::ON_SERVER_STOP);
 	}
 
-	function load($pluginId)
+	function load($pluginId, $catch = true)
 	{
+	    if($catch){
 		try
 		{
 			if( !($plugin = $this->register($pluginId)) )
@@ -53,7 +52,20 @@ final class PluginHandler extends \ManiaLib\Utils\Singleton implements AppListen
 			$this->unload($pluginId);
 			return false;
 		}
+	    }else{
+		if( !($plugin = $this->register($pluginId)) )
+		    return false;
+
+		$this->prepare($plugin);
+		//$plugin->onReady();
+		return true;
+	    }
 	}
+
+    public function ready($pluginId){
+	if($this->isLoaded($pluginId))
+	    $this->loadedPlugins[$pluginId]->onReady();
+    }
 
 	/**
 	 * Checks whether a specific Plugin has been loaded.
@@ -105,14 +117,9 @@ final class PluginHandler extends \ManiaLib\Utils\Singleton implements AppListen
 
 		$plugin = new $pluginId();
 		$plugin->onInit();
-		if(Storage::getInstance()->serverStatus->code > Status::LAUNCHING || $plugin instanceof WaitingCompliant)
-		{
-			Console::println('[PluginHandler] Loading plugin "'.$pluginId.'" '.$plugin->getVersion().'...');
-			return $this->loadedPlugins[$pluginId] = $plugin;
-		}
-		Console::println('[PluginHandler] Server is waiting, plugin "'.$pluginId.'" will be loaded later...');
-		$this->delayedPlugins[$pluginId] = $plugin;
-		return null;
+
+		Console::println('[PluginHandler] Loading plugin "'.$pluginId.'"...');
+		return $this->loadedPlugins[$pluginId] = $plugin;
 	}
 
 	private function prepare($plugin)
@@ -154,15 +161,6 @@ final class PluginHandler extends \ManiaLib\Utils\Singleton implements AppListen
 	}
 
 	/**
-	 * Get a list of the public methods for a registered Plugin.
-	 * @param string $pluginId Id of the Plugin.
-	 */
-	function getPublicMethods($pluginId)
-	{
-		return isset($this->loadedPlugins[$pluginId]) ? $this->loadedPlugins[$pluginId]->getPublicMethods() : null;
-	}
-
-	/**
 	 * Call a public method of a registered Plugin.
 	 * @param Plugin $caller
 	 * @param string $pluginId
@@ -185,21 +183,14 @@ final class PluginHandler extends \ManiaLib\Utils\Singleton implements AppListen
 	{
 		Console::println('[PluginHandler] Start plugin load process:');
 
-		foreach(\ManiaLive\Application\Config::getInstance()->plugins as $pluginId)
+		try
 		{
-			if (substr($pluginId, 0, 1) != '\\')
-			{
-				$pluginId = '\\'.$pluginId;
-			}
-			try
-			{
-				$this->register($pluginId);
-			}
-			catch(\Exception $e)
-			{
-				ErrorHandling::processRuntimeException($e);
-				$this->unload($pluginId);
-			}
+			$this->register('\ManiaLivePlugins\eXpansion\AutoLoad\AutoLoad');
+		}
+		catch(\Exception $e)
+		{
+			ErrorHandling::processRuntimeException($e);
+			$this->unload('\ManiaLivePlugins\eXpansion\AutoLoad\AutoLoad');
 		}
 
 		foreach($this->loadedPlugins as $pluginId => $plugin)
@@ -227,8 +218,10 @@ final class PluginHandler extends \ManiaLib\Utils\Singleton implements AppListen
 
 	function onTerminate()
 	{
+		$this->loadedPlugins = array_reverse($this->loadedPlugins);
 		foreach($this->loadedPlugins as $pluginId => $plugin)
-			$this->unload($pluginId);
+			if(!($plugin instanceof \ManiaLivePlugins\eXpansion\Core\Core))
+				$this->unload($pluginId);
 	}
 
 	function onServerStart()
@@ -256,8 +249,9 @@ final class PluginHandler extends \ManiaLib\Utils\Singleton implements AppListen
 
 	function onServerStop()
 	{
+		$this->loadedPlugins = array_reverse($this->loadedPlugins);
 		foreach($this->loadedPlugins as $pluginId => $plugin)
-			if(!($plugin instanceof WaitingCompliant))
+			if(!($plugin instanceof WaitingCompliant || $plugin instanceof \ManiaLivePlugins\eXpansion\Core\Core))
 			{
 				$this->unload($pluginId);
 				$this->delayedPlugins[$pluginId] = $plugin;
@@ -287,8 +281,6 @@ final class PluginHandler extends \ManiaLib\Utils\Singleton implements AppListen
 	function onVoteUpdated($stateName, $login, $cmdName, $cmdParam) {}
 	function onModeScriptCallback($param1, $param2) {}
 	function onPlayerAlliesChanged($login) {}
-	function onLoadData($type, $id) {}
-	function onSaveData($type, $id) {}
 }
 
 class Exception extends \Exception {}

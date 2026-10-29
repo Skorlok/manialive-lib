@@ -183,20 +183,6 @@ interface Listener extends \ManiaLive\Event\Listener
 	 * @param string $login
 	 */
 	function onPlayerAlliesChanged($login);
-
-	/**
-	 * You must answer this callback by calling SetScriptCloudVariables for given object.
-	 * @param string $type
-	 * @param int $id
-	 */
-	function onLoadData($type, $id);
-
-	/**
-	 * You must answer this callback by calling GetScriptCloudVariables for given object.
-	 * @param string $type
-	 * @param int $id
-	 */
-	function onSaveData($type, $id);
 }
 
 ?>

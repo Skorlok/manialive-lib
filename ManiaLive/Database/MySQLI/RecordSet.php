@@ -9,13 +9,11 @@
  * @date        $Date$:
  */
 
-namespace ManiaLive\Database\MySQL;
+namespace ManiaLive\Database\MySQLI;
 
 class RecordSet extends \ManiaLive\Database\RecordSet
 {
-	const FETCH_ASSOC = MYSQL_ASSOC;
-	const FETCH_NUM = MYSQL_NUM;
-	const FETCH_BOTH = MYSQL_BOTH;
+	const FETCH_ASSOC = MYSQLI_ASSOC;
 	
 	protected $result;
 	
@@ -26,25 +24,17 @@ class RecordSet extends \ManiaLive\Database\RecordSet
 	
 	function fetchRow()
 	{
-		return mysql_fetch_row($this->result);
+		return mysqli_fetch_row($this->result);
 	}
 	
 	function fetchAssoc()
 	{
-		return mysql_fetch_assoc($this->result);
+		return mysqli_fetch_assoc($this->result);
 	}
 	
 	function fetchArray($resultType = self::FETCH_ASSOC)
 	{
-		return mysql_fetch_array($this->result, $resultType);
-	}
-	
-	/**
-	 * @deprecated
-	 */
-	function fetchStdObject()
-	{
-		return $this->fetchObject(null);
+		return mysqli_fetch_array($this->result, $resultType);
 	}
 	
 	function fetchObject($className='\\stdClass', array $params=array())
@@ -53,27 +43,22 @@ class RecordSet extends \ManiaLive\Database\RecordSet
 		{
 			if($params)
 			{
-				return mysql_fetch_object($this->result, $className, $params);
+				return mysqli_fetch_object($this->result, $className, $params);
 			}
 			else
 			{
-				return mysql_fetch_object($this->result, $className);
+				return mysqli_fetch_object($this->result, $className);
 			}
 		}
 		else
 		{
-			return mysql_fetch_object($this->result);
+			return mysqli_fetch_object($this->result);
 		}
 	}
 	
 	function recordCount()
 	{
-		return mysql_num_rows($this->result);
-	}
-	
-	function recordAvailable()
-	{
-		return mysql_num_rows($this->result) > 0;
+		return mysqli_num_rows($this->result);
 	}
 }
 

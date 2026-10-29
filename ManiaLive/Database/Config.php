@@ -8,15 +8,14 @@
 
 namespace ManiaLive\Database;
 
-class Config extends \ManiaLib\Utils\Singleton
+class Config extends \ManiaLive\Utilities\Singleton
 {
-	public $enable = true;
 	public $host = '127.0.0.1';
 	public $port = 3306;
 	public $username = 'root';
 	public $password = '';
 	public $database = 'manialive';
-	public $type = 'MySQL';
+	public $type = 'MySQLI';
 }
 
 ?>

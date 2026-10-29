@@ -14,31 +14,7 @@ namespace ManiaLive\Database;
 abstract class RecordSet
 {
 	abstract function __construct($result);
-	
-	/**
-	 * @deprecated use fetchSingleValue instead
-	 */
-	function fetchScalar()
-	{
-		return $this->fetchSingleValue();
-	}
-	
-	function fetchSingleValue($default = 0)
-	{
-		$row = $this->fetchRow();
-		return $row ? reset($row) : $default;
-	}
 
-	function fetchArrayOfSingleValues()
-	{
-		$array = array();
-		while($row = $this->fetchRow())
-		{
-			$array[] = reset($row);
-		}
-		return $array;
-	}
-	
 	/**
 	 * Get a result row as an enumerated array
 	 * Returns an numerical array of strings that corresponds to the fetched row
@@ -103,8 +79,6 @@ abstract class RecordSet
 	 * @return int
 	 */
 	abstract function recordCount();
-	
-	abstract function recordAvailable();
 }
 
 ?>
