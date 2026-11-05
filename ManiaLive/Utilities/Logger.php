@@ -41,7 +41,7 @@ class Logger
 		if(!is_dir($logPath))
 			mkdir($logPath, '0777', true);
 
-		$this->path = $logPath . 'manialive' . $name . '.txt';
+		$this->path = $logPath . 'manialive-' . $name . '.txt';
 	}
 
 	function write($text, $tags=array())
