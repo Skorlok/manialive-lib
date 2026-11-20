@@ -15,7 +15,7 @@ use Maniaplanet\DedicatedServer\Connection;
 use ManiaLive\Config\Loader;
 use ManiaLive\Event\Dispatcher;
 
-const VERSION = '5.0';
+const VERSION = '5.1';
 
 class Application extends \ManiaLive\Utilities\Singleton
 {
@@ -64,12 +64,22 @@ class Application extends \ManiaLive\Utilities\Singleton
 		\ManiaLive\Utilities\Logger::log('Running ManiaLive ' . VERSION . ' on ' . $config->host . ':'. $config->port . ' on PHP ' . phpversion());
 		$this->connection = Connection::factory($config->host, $config->port, $config->timeout, $config->user, $config->password);
 
-		$serverStatus = $this->connection->getStatus();
-
-		while ($serverStatus->code != 4) {
-			\ManiaLive\Utilities\Console::printlnFormatted('Waiting for server to be in "Running" state, current state: ' . $serverStatus->name);
+		$serverStatus = null;
+		while (true) {
+			try {
+				$serverStatus = $this->connection->getStatus();
+				if ($serverStatus->code == 4) {
+					break;
+				}
+				$state = $serverStatus->name;
+			} catch (\Maniaplanet\DedicatedServer\Xmlrpc\TransportException $e) {
+				if ($e->getCode() != \Maniaplanet\DedicatedServer\Xmlrpc\TransportException::TIMED_OUT) {
+					throw $e;
+				}
+				$state = 'not responding';
+			}
+			\ManiaLive\Utilities\Console::printlnFormatted('Waiting for server to be in "Running" state, current state: ' . $state);
 			sleep(5);
-			$serverStatus = $this->connection->getStatus();
 		}
 		$this->connection->sendHideManialinkPage();
 
@@ -84,15 +94,17 @@ class Application extends \ManiaLive\Utilities\Singleton
 
 	final function run()
 	{
+		self::$startTime = microtime(true);
+		$nextCycleStart = self::$startTime;
+		$cycleTime = 1 / static::CYCLES_PER_SECOND;
+
 		try {
 			$this->init();
-
 			Dispatcher::dispatch(new Event(Event::ON_RUN));
-			self::$startTime = microtime(true);
-			$nextCycleStart = self::$startTime;
-			$cycleTime = 1 / static::CYCLES_PER_SECOND;
 		} catch(\Exception $e) {
 			ErrorHandling::processRuntimeException($e);
+			\ManiaLive\Utilities\Console::println('ManiaLive initialization failed, exiting.');
+    		exit(1);
 		}
 
 		try {
